@@ -1,5 +1,5 @@
 --[[
-    KamuHub v2.0 - Universal Hub
+    KamuHub v2.1 - Universal Hub
     Abrir/fechar: LeftShift (PC) ou botao "-" / pilula (celular)
 ]]
 
@@ -31,6 +31,7 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
 local PPS = game:GetService("ProximityPromptService")
+local RepStorage = game:GetService("ReplicatedStorage")
 local lp = Players.LocalPlayer
 
 ------------------------------------------------------------------
@@ -42,7 +43,6 @@ local function lighten(c, a) return c:Lerp(WHITE, a) end
 local theme = {
     Accent = Color3.fromRGB(150, 90, 255),
     Accent2 = lighten(Color3.fromRGB(150, 90, 255), 0.4),
-    Side = Color3.fromRGB(20, 20, 30),
     Card = Color3.fromRGB(30, 30, 44),
     CardHover = Color3.fromRGB(40, 40, 58),
     Off = Color3.fromRGB(58, 58, 78),
@@ -56,7 +56,12 @@ local S = {
     speedOn = false, speed = 32, jumpOn = false, jump = 90,
     spin = false, spinSpeed = 12, esp = false, clickTp = false, fullbright = false,
     antiafk = true, autoclick = false, cps = 10, instPrompt = false,
-    farm = false, weapon = "Melee", farmH = 8, doorsHl = false,
+    aura = false, auraRange = 30,
+    farm = false, weapon = "Melee", farmH = 8, autoStats = false, stat = "Melee",
+    autoFruit = false, fruitEsp = false,
+    coinFarm = false,
+    bring = false, itemEsp = false,
+    doorsHl = false,
 }
 
 local lang = "pt"
@@ -65,9 +70,9 @@ local isPremium = (CFG.Premium[lp.UserId] == true) or (CFG.PremiumNames[lp.Name:
 local L = {
     pt = {
         tab_main = "Main", tab_player = "Player", tab_tp = "Teleport", tab_visual = "Visual", tab_config = "Config",
-        sec_move = "Movimento", sec_misc = "Diversos", sec_bf = "Blox Fruits", sec_char = "Personagem",
-        sec_players = "Jogadores", sec_tools = "Ferramentas", sec_view = "Visao", sec_doors = "Doors",
-        sec_look = "Aparencia", sec_general = "Geral",
+        sec_move = "Movimento", sec_misc = "Diversos", sec_bf = "Blox Fruits", sec_mm2 = "Murder Mystery 2",
+        sec_99 = "99 Nights", sec_char = "Personagem", sec_players = "Jogadores", sec_tools = "Ferramentas",
+        sec_islands = "Ilhas", sec_view = "Visao", sec_doors = "Doors", sec_look = "Aparencia", sec_general = "Geral",
         fly = "Fly (voar)", flyspeed = "Velocidade do Fly", noclip = "Noclip", infjump = "Pulo infinito",
         speedon = "Ativar velocidade", speedval = "Velocidade", jumpon = "Ativar pulo alto", jumpval = "Forca do pulo",
         spin = "Spin (girar)", spinspeed = "Velocidade do spin", antiafk = "Anti-AFK",
@@ -76,17 +81,22 @@ local L = {
         esp = "ESP de jogadores", clicktp = "Click TP (Ctrl + clique)", fullbright = "Fullbright",
         fps = "Boost de FPS", language = "Idioma", accent = "Cor do painel", bgtrans = "Transparencia do fundo",
         togglekey = "Tecla abrir/fechar", pressakey = "Aperte uma tecla...", destroy = "Fechar KamuHub",
-        yourid = "Seu UserId: ", game_detected = "Jogo detectado: ",
+        game_detected = "Jogo detectado: ",
+        aura = "Kill Aura (so mobs)", aurarange = "Alcance da aura",
         farm = "Auto Farm (mob mais proximo)", weapon = "Arma", farmh = "Altura do farm",
-        doorshl = "Destacar itens/interacoes", mm2info = "Murder Mystery 2: ESP mostra assassino (vermelho) e xerife (azul).",
+        autostats = "Auto Stats", stat = "Atributo", autofruit = "Auto Fruta (ir ate a fruta)", fruitesp = "ESP de frutas",
+        coinfarm = "Auto Farm de moedas", grabgun = "Pegar arma caida",
+        bring = "Puxar itens ate mim", campfire = "Ir para a fogueira", itemesp = "ESP de itens e inimigos",
+        doorshl = "Destacar itens/interacoes",
         loaded = "KamuHub carregado!", needprem = "Recurso exclusivo Premium!",
         premium_user = "Usuario Premium", free_user = "Conta Free", tpdone = "Teleportado para ",
+        notfound = "Nao encontrado neste servidor.",
     },
     en = {
         tab_main = "Main", tab_player = "Player", tab_tp = "Teleport", tab_visual = "Visual", tab_config = "Config",
-        sec_move = "Movement", sec_misc = "Misc", sec_bf = "Blox Fruits", sec_char = "Character",
-        sec_players = "Players", sec_tools = "Tools", sec_view = "View", sec_doors = "Doors",
-        sec_look = "Appearance", sec_general = "General",
+        sec_move = "Movement", sec_misc = "Misc", sec_bf = "Blox Fruits", sec_mm2 = "Murder Mystery 2",
+        sec_99 = "99 Nights", sec_char = "Character", sec_players = "Players", sec_tools = "Tools",
+        sec_islands = "Islands", sec_view = "View", sec_doors = "Doors", sec_look = "Appearance", sec_general = "General",
         fly = "Fly", flyspeed = "Fly speed", noclip = "Noclip", infjump = "Infinite jump",
         speedon = "Enable speed", speedval = "Speed", jumpon = "Enable high jump", jumpval = "Jump power",
         spin = "Spin", spinspeed = "Spin speed", antiafk = "Anti-AFK",
@@ -95,11 +105,16 @@ local L = {
         esp = "Player ESP", clicktp = "Click TP (Ctrl + click)", fullbright = "Fullbright",
         fps = "FPS boost", language = "Language", accent = "Panel color", bgtrans = "Background transparency",
         togglekey = "Toggle key", pressakey = "Press a key...", destroy = "Close KamuHub",
-        yourid = "Your UserId: ", game_detected = "Game detected: ",
+        game_detected = "Game detected: ",
+        aura = "Kill Aura (mobs only)", aurarange = "Aura range",
         farm = "Auto Farm (nearest mob)", weapon = "Weapon", farmh = "Farm height",
-        doorshl = "Highlight items/interactions", mm2info = "Murder Mystery 2: ESP shows murderer (red) and sheriff (blue).",
+        autostats = "Auto Stats", stat = "Stat", autofruit = "Auto Fruit (go to fruit)", fruitesp = "Fruit ESP",
+        coinfarm = "Coin Auto Farm", grabgun = "Grab dropped gun",
+        bring = "Bring items to me", campfire = "Go to campfire", itemesp = "Item & enemy ESP",
+        doorshl = "Highlight items/interactions",
         loaded = "KamuHub loaded!", needprem = "Premium-only feature!",
         premium_user = "Premium user", free_user = "Free account", tpdone = "Teleported to ",
+        notfound = "Not found on this server.",
     },
 }
 local function tr(k) return (L[lang] and L[lang][k]) or L.en[k] or k end
@@ -146,7 +161,7 @@ end
 local function corner(o, r) return new("UICorner", { CornerRadius = UDim.new(0, r) }, o) end
 local function accentSeq() return ColorSequence.new(theme.Accent, theme.Accent2) end
 
--- logo (baixa uma vez e aplica em todos)
+-- logo
 local logoImage, logoTargets = nil, {}
 local function applyLogo(img)
     logoTargets[#logoTargets + 1] = img
@@ -165,10 +180,9 @@ task.spawn(function()
 end)
 
 local function makeLogo(parent, size, pos)
-    local circle = new("Frame", { Size = UDim2.fromOffset(size, size), Position = pos, BorderSizePixel = 0 }, parent)
+    local circle = new("Frame", { Size = UDim2.fromOffset(size, size), Position = pos, BorderSizePixel = 0, BackgroundColor3 = WHITE }, parent)
     corner(circle, size)
     local grad = new("UIGradient", { Rotation = 45 }, circle)
-    circle.BackgroundColor3 = WHITE
     onAccent(function() grad.Color = accentSeq() end)
     new("TextLabel", {
         Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "K", Font = Enum.Font.GothamBlack,
@@ -177,16 +191,16 @@ local function makeLogo(parent, size, pos)
     local img = new("ImageLabel", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ScaleType = Enum.ScaleType.Crop }, circle)
     corner(img, size)
     applyLogo(img)
-    local st = new("UIStroke", { Thickness = 2, Transparency = 0.2 }, circle)
+    local st = new("UIStroke", { Thickness = 1.5, Transparency = 0.2 }, circle)
     onAccent(function() st.Color = theme.Accent2 end)
     return circle
 end
 
 local function makeBadge(parent)
-    local b = new("Frame", { AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 18), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, parent)
-    corner(b, 9)
+    local b = new("Frame", { AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 16), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, parent)
+    corner(b, 8)
     local g = new("UIGradient", { Rotation = 20 }, b)
-    new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, b)
+    new("UIPadding", { PaddingLeft = UDim.new(0, 7), PaddingRight = UDim.new(0, 7) }, b)
     if isPremium then
         g.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 185, 40)),
@@ -199,8 +213,8 @@ local function makeBadge(parent)
         g.Color = ColorSequence.new(Color3.fromRGB(90, 90, 110), Color3.fromRGB(70, 70, 90))
     end
     new("TextLabel", {
-        AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 18), BackgroundTransparency = 1,
-        Text = isPremium and "PREMIUM" or "FREE", Font = Enum.Font.GothamBold, TextSize = 10,
+        AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 16), BackgroundTransparency = 1,
+        Text = isPremium and "PREMIUM" or "FREE", Font = Enum.Font.GothamBold, TextSize = 9,
         TextColor3 = isPremium and Color3.fromRGB(45, 30, 0) or Color3.fromRGB(225, 225, 235),
     }, b)
     return b
@@ -210,10 +224,10 @@ local function makeTitle(parent, pos, size, textSize)
     local box = new("Frame", { Size = size, Position = pos, BackgroundTransparency = 1 }, parent)
     new("UIListLayout", {
         FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center,
-        Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder,
     }, box)
     local t = new("TextLabel", {
-        AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 26), BackgroundTransparency = 1,
+        AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 22), BackgroundTransparency = 1,
         Text = "KamuHub", Font = Enum.Font.GothamBlack, TextSize = textSize, TextColor3 = WHITE, LayoutOrder = 1,
     }, box)
     local g = new("UIGradient", {}, t)
@@ -227,22 +241,22 @@ end
 -- NOTIFICACOES
 ------------------------------------------------------------------
 local toastHolder = new("Frame", {
-    Size = UDim2.fromOffset(270, 300), AnchorPoint = Vector2.new(1, 1),
-    Position = UDim2.new(1, -14, 1, -14), BackgroundTransparency = 1,
+    Size = UDim2.fromOffset(250, 300), AnchorPoint = Vector2.new(1, 1),
+    Position = UDim2.new(1, -12, 1, -12), BackgroundTransparency = 1,
 }, gui)
 new("UIListLayout", {
     VerticalAlignment = Enum.VerticalAlignment.Bottom, HorizontalAlignment = Enum.HorizontalAlignment.Right,
-    Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder,
+    Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder,
 }, toastHolder)
 
 local function notify(msg)
-    local f = new("Frame", { Size = UDim2.fromOffset(260, 42), BackgroundColor3 = theme.Side, BackgroundTransparency = 1, BorderSizePixel = 0 }, toastHolder)
-    corner(f, 10)
-    local bar = new("Frame", { Size = UDim2.new(0, 4, 1, -14), Position = UDim2.fromOffset(8, 7), BackgroundColor3 = theme.Accent, BackgroundTransparency = 1, BorderSizePixel = 0 }, f)
+    local f = new("Frame", { Size = UDim2.fromOffset(240, 34), BackgroundColor3 = Color3.fromRGB(20, 20, 30), BackgroundTransparency = 1, BorderSizePixel = 0 }, toastHolder)
+    corner(f, 9)
+    local bar = new("Frame", { Size = UDim2.new(0, 3, 1, -12), Position = UDim2.fromOffset(8, 6), BackgroundColor3 = theme.Accent, BackgroundTransparency = 1, BorderSizePixel = 0 }, f)
     corner(bar, 2)
     local t = new("TextLabel", {
-        Size = UDim2.new(1, -30, 1, 0), Position = UDim2.fromOffset(22, 0), BackgroundTransparency = 1, Text = msg,
-        TextColor3 = theme.Text, TextTransparency = 1, Font = Enum.Font.GothamMedium, TextSize = 13,
+        Size = UDim2.new(1, -28, 1, 0), Position = UDim2.fromOffset(20, 0), BackgroundTransparency = 1, Text = msg,
+        TextColor3 = theme.Text, TextTransparency = 1, Font = Enum.Font.GothamMedium, TextSize = 11,
         TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
     }, f)
     local st = new("UIStroke", { Color = theme.Accent, Thickness = 1, Transparency = 1 }, f)
@@ -258,7 +272,7 @@ end
 ------------------------------------------------------------------
 -- JANELA
 ------------------------------------------------------------------
-local BASE_W, BASE_H = 640, 410
+local BASE_W, BASE_H = 600, 380
 local cam0 = workspace.CurrentCamera
 local vp = cam0 and cam0.ViewportSize or Vector2.new(1280, 720)
 local baseScale = math.clamp(math.min(vp.X / (BASE_W + 40), vp.Y / (BASE_H + 40)), 0.5, 1)
@@ -276,36 +290,36 @@ local shadow = new("ImageLabel", {
 }, rootF)
 
 local win = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BorderSizePixel = 0, ClipsDescendants = true, ZIndex = 1 }, rootF)
-corner(win, 16)
+corner(win, 14)
 new("UIGradient", { Rotation = 60, Color = ColorSequence.new(Color3.fromRGB(28, 22, 44), Color3.fromRGB(12, 12, 19)) }, win)
-local winStroke = new("UIStroke", { Thickness = 1.6, Transparency = 0.25 }, win)
+local winStroke = new("UIStroke", { Thickness = 1.5, Transparency = 0.25 }, win)
 local winStrokeGrad = new("UIGradient", { Rotation = 45 }, winStroke)
 onAccent(function() winStrokeGrad.Color = accentSeq() end)
 
-local glow1 = new("Frame", { Size = UDim2.fromOffset(320, 320), Position = UDim2.new(1, -170, 0, -180), BackgroundTransparency = 0.88, BorderSizePixel = 0 }, win)
-corner(glow1, 160)
-local glow2 = new("Frame", { Size = UDim2.fromOffset(260, 260), Position = UDim2.new(0, -120, 1, -110), BackgroundTransparency = 0.92, BorderSizePixel = 0 }, win)
-corner(glow2, 130)
+local glow1 = new("Frame", { Size = UDim2.fromOffset(300, 300), Position = UDim2.new(1, -160, 0, -170), BackgroundTransparency = 0.88, BorderSizePixel = 0 }, win)
+corner(glow1, 150)
+local glow2 = new("Frame", { Size = UDim2.fromOffset(240, 240), Position = UDim2.new(0, -110, 1, -100), BackgroundTransparency = 0.92, BorderSizePixel = 0 }, win)
+corner(glow2, 120)
 onAccent(function() glow1.BackgroundColor3 = theme.Accent; glow2.BackgroundColor3 = theme.Accent end)
 
 -- header
-local header = new("Frame", { Size = UDim2.new(1, 0, 0, 52), BackgroundTransparency = 1, ZIndex = 2 }, win)
-makeLogo(header, 36, UDim2.fromOffset(14, 8))
-makeTitle(header, UDim2.fromOffset(60, 0), UDim2.fromOffset(300, 52), 20)
+local header = new("Frame", { Size = UDim2.new(1, 0, 0, 46), BackgroundTransparency = 1, ZIndex = 2 }, win)
+makeLogo(header, 30, UDim2.fromOffset(12, 8))
+makeTitle(header, UDim2.fromOffset(50, 0), UDim2.fromOffset(280, 46), 16)
 new("Frame", { Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1, 0), BackgroundColor3 = WHITE, BackgroundTransparency = 0.92, BorderSizePixel = 0 }, header)
 
 local function headerBtn(text, xOff, hoverColor)
     local b = new("TextButton", {
-        Size = UDim2.fromOffset(30, 30), Position = UDim2.new(1, xOff, 0, 11), BackgroundColor3 = theme.Card,
-        Text = text, TextColor3 = theme.Text, Font = Enum.Font.GothamBold, TextSize = 18, AutoButtonColor = false, BorderSizePixel = 0,
+        Size = UDim2.fromOffset(26, 26), Position = UDim2.new(1, xOff, 0, 10), BackgroundColor3 = theme.Card,
+        Text = text, TextColor3 = theme.Text, Font = Enum.Font.GothamBold, TextSize = 15, AutoButtonColor = false, BorderSizePixel = 0,
     }, header)
-    corner(b, 9)
+    corner(b, 8)
     b.MouseEnter:Connect(function() tw(b, 0.15, { BackgroundColor3 = hoverColor or theme.CardHover }) end)
     b.MouseLeave:Connect(function() tw(b, 0.15, { BackgroundColor3 = theme.Card }) end)
     return b
 end
-local minBtn = headerBtn("-", -78)
-local closeBtn = headerBtn("x", -42, Color3.fromRGB(220, 60, 80))
+local minBtn = headerBtn("-", -66)
+local closeBtn = headerBtn("x", -36, Color3.fromRGB(220, 60, 80))
 
 -- arrastar
 do
@@ -327,48 +341,48 @@ do
 end
 
 -- sidebar
-local side = new("Frame", { Size = UDim2.new(0, 150, 1, -52), Position = UDim2.fromOffset(0, 52), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.78, BorderSizePixel = 0, ZIndex = 2 }, win)
+local side = new("Frame", { Size = UDim2.new(0, 140, 1, -46), Position = UDim2.fromOffset(0, 46), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.78, BorderSizePixel = 0, ZIndex = 2 }, win)
 new("Frame", { Size = UDim2.new(0, 1, 1, 0), Position = UDim2.new(1, -1, 0, 0), BackgroundColor3 = WHITE, BackgroundTransparency = 0.92, BorderSizePixel = 0 }, side)
 
-local TAB_Y0, TAB_STEP, TAB_H = 12, 42, 36
+local TAB_Y0, TAB_STEP, TAB_H = 10, 38, 32
 local selector = new("Frame", {
-    Size = UDim2.new(1, -16, 0, TAB_H), Position = UDim2.fromOffset(8, TAB_Y0), BackgroundTransparency = 0.82, BorderSizePixel = 0,
+    Size = UDim2.new(1, -14, 0, TAB_H), Position = UDim2.fromOffset(7, TAB_Y0), BackgroundTransparency = 0.82, BorderSizePixel = 0,
 }, side)
-corner(selector, 10)
+corner(selector, 9)
 local selStroke = new("UIStroke", { Thickness = 1, Transparency = 0.55 }, selector)
-local selBar = new("Frame", { Size = UDim2.fromOffset(3, 18), Position = UDim2.new(0, 0, 0.5, -9), BorderSizePixel = 0 }, selector)
+local selBar = new("Frame", { Size = UDim2.fromOffset(3, 16), Position = UDim2.new(0, 0, 0.5, -8), BorderSizePixel = 0 }, selector)
 corner(selBar, 2)
 onAccent(function() selector.BackgroundColor3 = theme.Accent; selStroke.Color = theme.Accent; selBar.BackgroundColor3 = theme.Accent2 end)
 
 -- rodape do usuario
 local foot = new("Frame", {
-    Size = UDim2.new(1, -16, 0, 56), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 8, 1, -8),
+    Size = UDim2.new(1, -14, 0, 50), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 7, 1, -7),
     BackgroundColor3 = theme.Card, BorderSizePixel = 0,
 }, side)
-corner(foot, 12)
-local avatar = new("ImageLabel", { Size = UDim2.fromOffset(38, 38), Position = UDim2.fromOffset(9, 9), BackgroundColor3 = theme.Off, BorderSizePixel = 0 }, foot)
-corner(avatar, 19)
+corner(foot, 11)
+local avatar = new("ImageLabel", { Size = UDim2.fromOffset(34, 34), Position = UDim2.fromOffset(8, 8), BackgroundColor3 = theme.Off, BorderSizePixel = 0 }, foot)
+corner(avatar, 17)
 task.spawn(function()
     pcall(function()
         avatar.Image = Players:GetUserThumbnailAsync(lp.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
     end)
 end)
 new("TextLabel", {
-    Size = UDim2.new(1, -56, 0, 18), Position = UDim2.fromOffset(52, 10), BackgroundTransparency = 1, Text = lp.DisplayName,
-    Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = theme.Text, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+    Size = UDim2.new(1, -52, 0, 16), Position = UDim2.fromOffset(48, 9), BackgroundTransparency = 1, Text = lp.DisplayName,
+    Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = theme.Text, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 }, foot)
 local statusLbl = new("TextLabel", {
-    Size = UDim2.new(1, -56, 0, 16), Position = UDim2.fromOffset(52, 28), BackgroundTransparency = 1,
-    Font = Enum.Font.Gotham, TextSize = 11, TextXAlignment = Enum.TextXAlignment.Left,
+    Size = UDim2.new(1, -52, 0, 14), Position = UDim2.fromOffset(48, 26), BackgroundTransparency = 1,
+    Font = Enum.Font.Gotham, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Left,
 }, foot)
 onLang(function() statusLbl.Text = isPremium and tr("premium_user") or tr("free_user") end)
 onAccent(function() statusLbl.TextColor3 = isPremium and theme.Gold or theme.Sub end)
 
 -- conteudo
-local content = new("Frame", { Size = UDim2.new(1, -150, 1, -52), Position = UDim2.fromOffset(150, 52), BackgroundTransparency = 1, ZIndex = 2 }, win)
+local content = new("Frame", { Size = UDim2.new(1, -140, 1, -46), Position = UDim2.fromOffset(140, 46), BackgroundTransparency = 1, ZIndex = 2 }, win)
 local titleLbl = new("TextLabel", {
-    Size = UDim2.fromOffset(320, 30), Position = UDim2.fromOffset(18, 8), BackgroundTransparency = 1,
-    Font = Enum.Font.GothamBlack, TextSize = 20, TextColor3 = theme.Text, TextXAlignment = Enum.TextXAlignment.Left,
+    Size = UDim2.fromOffset(320, 26), Position = UDim2.fromOffset(16, 6), BackgroundTransparency = 1,
+    Font = Enum.Font.GothamBlack, TextSize = 16, TextColor3 = theme.Text, TextXAlignment = Enum.TextXAlignment.Left,
 }, content)
 
 ------------------------------------------------------------------
@@ -385,14 +399,14 @@ local function selectTab(t, instant)
         if on then
             x.page.Visible = true
             if not instant then
-                x.page.Position = UDim2.fromOffset(10, 62)
-                tw(x.page, 0.35, { Position = UDim2.fromOffset(10, 44) })
+                x.page.Position = UDim2.fromOffset(10, 54)
+                tw(x.page, 0.35, { Position = UDim2.fromOffset(10, 38) })
             end
         else
             x.page.Visible = false
         end
     end
-    tw(selector, instant and 0 or 0.35, { Position = UDim2.fromOffset(8, TAB_Y0 + (t.index - 1) * TAB_STEP) }, Enum.EasingStyle.Back)
+    tw(selector, instant and 0 or 0.35, { Position = UDim2.fromOffset(7, TAB_Y0 + (t.index - 1) * TAB_STEP) }, Enum.EasingStyle.Back)
     titleLbl.Text = tr(t.key)
     if not instant then titleLbl.TextTransparency = 1; tw(titleLbl, 0.3, { TextTransparency = 0 }) end
 end
@@ -401,19 +415,19 @@ onLang(function() if currentTab then titleLbl.Text = tr(currentTab.key) end end)
 local function addTab(key)
     local index = #tabs + 1
     local btn = new("TextButton", {
-        Size = UDim2.new(1, -16, 0, TAB_H), Position = UDim2.fromOffset(8, TAB_Y0 + (index - 1) * TAB_STEP),
+        Size = UDim2.new(1, -14, 0, TAB_H), Position = UDim2.fromOffset(7, TAB_Y0 + (index - 1) * TAB_STEP),
         BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 3,
     }, side)
     local lbl = new("TextLabel", {
-        Size = UDim2.new(1, -20, 1, 0), Position = UDim2.fromOffset(16, 0), BackgroundTransparency = 1,
-        Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = theme.Sub, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3,
+        Size = UDim2.new(1, -20, 1, 0), Position = UDim2.fromOffset(14, 0), BackgroundTransparency = 1,
+        Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = theme.Sub, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3,
     }, btn)
     onLang(function() lbl.Text = tr(key) end)
     local page = new("ScrollingFrame", {
-        Size = UDim2.new(1, -20, 1, -54), Position = UDim2.fromOffset(10, 44), BackgroundTransparency = 1,
+        Size = UDim2.new(1, -20, 1, -44), Position = UDim2.fromOffset(10, 38), BackgroundTransparency = 1,
         BorderSizePixel = 0, ScrollBarThickness = 3, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, Visible = false,
     }, content)
-    new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, page)
+    new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, page)
     new("UIPadding", { PaddingBottom = UDim.new(0, 8) }, page)
     onAccent(function() page.ScrollBarImageColor3 = theme.Accent end)
     local t = { key = key, index = index, btn = btn, lbl = lbl, page = page }
@@ -443,7 +457,7 @@ end
 local function shake(c)
     task.spawn(function()
         local p = c.Position
-        for _, dx in ipairs({ 8, -8, 5, -5, 0 }) do
+        for _, dx in ipairs({ 7, -7, 4, -4, 0 }) do
             tw(c, 0.05, { Position = UDim2.new(p.X.Scale, p.X.Offset + dx, p.Y.Scale, p.Y.Offset) })
             task.wait(0.05)
         end
@@ -451,9 +465,9 @@ local function shake(c)
 end
 
 local function card(page, h)
-    local holder = new("Frame", { Size = UDim2.new(1, -8, 0, h or 44), BackgroundTransparency = 1 }, page)
+    local holder = new("Frame", { Size = UDim2.new(1, -8, 0, h or 38), BackgroundTransparency = 1 }, page)
     local c = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = theme.Card, BorderSizePixel = 0, ClipsDescendants = true }, holder)
-    corner(c, 12)
+    corner(c, 10)
     new("UIStroke", { Color = WHITE, Transparency = 0.93, Thickness = 1 }, c)
     local sc = new("UIScale", {}, c)
     return c, sc
@@ -476,8 +490,8 @@ end
 
 local function cardLabel(c, key, widthOff, h)
     local l = new("TextLabel", {
-        Size = UDim2.new(1, widthOff or -80, 0, h or 44), Position = UDim2.fromOffset(16, 0), BackgroundTransparency = 1,
-        Font = Enum.Font.GothamMedium, TextSize = 13, TextColor3 = theme.Text, TextXAlignment = Enum.TextXAlignment.Left,
+        Size = UDim2.new(1, widthOff or -70, 0, h or 38), Position = UDim2.fromOffset(14, 0), BackgroundTransparency = 1,
+        Font = Enum.Font.GothamMedium, TextSize = 11, TextColor3 = theme.Text, TextXAlignment = Enum.TextXAlignment.Left,
     }, c)
     onLang(function() l.Text = tr(key) end)
     return l
@@ -485,46 +499,46 @@ end
 
 local function premTag(c, xRight)
     local t = new("TextLabel", {
-        Size = UDim2.fromOffset(58, 16), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, xRight, 0.5, 0),
-        BackgroundColor3 = WHITE, Text = "PREMIUM", Font = Enum.Font.GothamBold, TextSize = 9,
+        Size = UDim2.fromOffset(50, 14), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, xRight, 0.5, 0),
+        BackgroundColor3 = WHITE, Text = "PREMIUM", Font = Enum.Font.GothamBold, TextSize = 8,
         TextColor3 = Color3.fromRGB(45, 30, 0), BorderSizePixel = 0,
     }, c)
-    corner(t, 8)
+    corner(t, 7)
     new("UIGradient", { Color = ColorSequence.new(Color3.fromRGB(255, 190, 45), Color3.fromRGB(255, 232, 150)), Rotation = 20 }, t)
 end
 
 local function Section(page, key)
-    local f = new("Frame", { Size = UDim2.new(1, -8, 0, 22), BackgroundTransparency = 1 }, page)
+    local f = new("Frame", { Size = UDim2.new(1, -8, 0, 18), BackgroundTransparency = 1 }, page)
     local l = new("TextLabel", {
         Size = UDim2.fromScale(1, 1), Position = UDim2.fromOffset(4, 0), BackgroundTransparency = 1,
-        Font = Enum.Font.GothamBold, TextSize = 11, TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Enum.Font.GothamBold, TextSize = 9, TextXAlignment = Enum.TextXAlignment.Left,
     }, f)
     onLang(function() l.Text = string.upper(tr(key)) end)
     onAccent(function() l.TextColor3 = theme.Accent2 end)
 end
 
 local function Info(page, textFn, h)
-    local c = card(page, h or 40)
+    local c = card(page, h or 32)
     local l = new("TextLabel", {
-        Size = UDim2.new(1, -28, 1, 0), Position = UDim2.fromOffset(14, 0), BackgroundTransparency = 1,
-        Font = Enum.Font.GothamMedium, TextSize = 12, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
+        Size = UDim2.new(1, -24, 1, 0), Position = UDim2.fromOffset(12, 0), BackgroundTransparency = 1,
+        Font = Enum.Font.GothamMedium, TextSize = 11, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
     }, c)
     onLang(function() l.Text = textFn() end)
     onAccent(function() l.TextColor3 = theme.Accent2 end)
 end
 
 local function Toggle(page, key, default, cb, prem)
-    local c, sc = card(page, 44)
-    cardLabel(c, key, prem and -170 or -80)
-    local track = new("Frame", { Size = UDim2.fromOffset(44, 22), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0), BackgroundColor3 = theme.Off, BorderSizePixel = 0 }, c)
-    corner(track, 11)
-    local knob = new("Frame", { Size = UDim2.fromOffset(18, 18), Position = UDim2.fromOffset(2, 2), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, track)
-    corner(knob, 9)
-    if prem then premTag(c, -70) end
+    local c, sc = card(page, 38)
+    cardLabel(c, key, prem and -140 or -70)
+    local track = new("Frame", { Size = UDim2.fromOffset(38, 19), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), BackgroundColor3 = theme.Off, BorderSizePixel = 0 }, c)
+    corner(track, 10)
+    local knob = new("Frame", { Size = UDim2.fromOffset(15, 15), Position = UDim2.fromOffset(2, 2), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, track)
+    corner(knob, 8)
+    if prem then premTag(c, -58) end
     local state = default
     local function render(anim)
         tw(track, anim and 0.2 or 0, { BackgroundColor3 = state and theme.Accent or theme.Off })
-        tw(knob, anim and 0.3 or 0, { Position = state and UDim2.fromOffset(24, 2) or UDim2.fromOffset(2, 2) }, Enum.EasingStyle.Back)
+        tw(knob, anim and 0.3 or 0, { Position = state and UDim2.fromOffset(21, 2) or UDim2.fromOffset(2, 2) }, Enum.EasingStyle.Back)
     end
     onAccent(function() render(false) end)
     interact(c, sc, function()
@@ -537,23 +551,23 @@ local function Toggle(page, key, default, cb, prem)
 end
 
 local function Slider(page, key, min, max, def, cb)
-    local c = card(page, 60)
-    cardLabel(c, key, -90, 34)
+    local c = card(page, 52)
+    cardLabel(c, key, -80, 28)
     local val = new("TextLabel", {
-        Size = UDim2.fromOffset(60, 34), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 0), BackgroundTransparency = 1,
-        Font = Enum.Font.GothamBold, TextSize = 13, Text = tostring(def), TextXAlignment = Enum.TextXAlignment.Right,
+        Size = UDim2.fromOffset(60, 28), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 0), BackgroundTransparency = 1,
+        Font = Enum.Font.GothamBold, TextSize = 11, Text = tostring(def), TextXAlignment = Enum.TextXAlignment.Right,
     }, c)
-    local bar = new("Frame", { Size = UDim2.new(1, -32, 0, 8), Position = UDim2.fromOffset(16, 40), BackgroundColor3 = theme.Off, BorderSizePixel = 0 }, c)
-    corner(bar, 4)
+    local bar = new("Frame", { Size = UDim2.new(1, -28, 0, 6), Position = UDim2.fromOffset(14, 36), BackgroundColor3 = theme.Off, BorderSizePixel = 0 }, c)
+    corner(bar, 3)
     local rel0 = (def - min) / (max - min)
     local fill = new("Frame", { Size = UDim2.fromScale(rel0, 1), BorderSizePixel = 0, BackgroundColor3 = WHITE }, bar)
-    corner(fill, 4)
+    corner(fill, 3)
     local fg = new("UIGradient", {}, fill)
-    local knob = new("Frame", { Size = UDim2.fromOffset(14, 14), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(rel0, 0.5), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, bar)
-    corner(knob, 7)
+    local knob = new("Frame", { Size = UDim2.fromOffset(12, 12), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(rel0, 0.5), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, bar)
+    corner(knob, 6)
     local ks = new("UIStroke", { Thickness = 2 }, knob)
     onAccent(function() fg.Color = accentSeq(); ks.Color = theme.Accent; val.TextColor3 = theme.Accent2 end)
-    local hit = new("TextButton", { Size = UDim2.new(1, -16, 0, 30), Position = UDim2.fromOffset(8, 30), BackgroundTransparency = 1, Text = "", ZIndex = 5 }, c)
+    local hit = new("TextButton", { Size = UDim2.new(1, -14, 0, 26), Position = UDim2.fromOffset(7, 26), BackgroundTransparency = 1, Text = "", ZIndex = 5 }, c)
     local dragging = false
     local function upd(x)
         local rel = math.clamp((x - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
@@ -565,26 +579,26 @@ local function Slider(page, key, min, max, def, cb)
         cb(v)
     end
     hit.InputBegan:Connect(function(i)
-        if isPress(i) then dragging = true; tw(knob, 0.15, { Size = UDim2.fromOffset(19, 19) }, Enum.EasingStyle.Back); upd(i.Position.X) end
+        if isPress(i) then dragging = true; tw(knob, 0.15, { Size = UDim2.fromOffset(16, 16) }, Enum.EasingStyle.Back); upd(i.Position.X) end
     end)
     bind(UIS.InputChanged, function(i)
         if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then upd(i.Position.X) end
     end)
     bind(UIS.InputEnded, function(i)
-        if isPress(i) and dragging then dragging = false; tw(knob, 0.2, { Size = UDim2.fromOffset(14, 14) }, Enum.EasingStyle.Back) end
+        if isPress(i) and dragging then dragging = false; tw(knob, 0.2, { Size = UDim2.fromOffset(12, 12) }, Enum.EasingStyle.Back) end
     end)
 end
 
 local function Button(page, key, cb, prem, dyn)
-    local c, sc = card(page, 44)
+    local c, sc = card(page, 36)
     c.BackgroundColor3 = WHITE
     local g = new("UIGradient", { Rotation = 0 }, c)
     onAccent(function() g.Color = accentSeq() end)
     local l = new("TextLabel", {
-        Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = WHITE,
+        Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = WHITE,
     }, c)
     onLang(function() l.Text = dyn and dyn() or tr(key) end)
-    if prem then premTag(c, -12) end
+    if prem then premTag(c, -10) end
     local b = interact(c, sc, function()
         if prem and not isPremium then shake(c); notify(tr("needprem")) return end
         cb()
@@ -595,14 +609,14 @@ local function Button(page, key, cb, prem, dyn)
 end
 
 local function Choice(page, key, options, defIndex, cb)
-    local c, sc = card(page, 44)
-    cardLabel(c, key, -170)
-    local pill = new("Frame", { Size = UDim2.fromOffset(120, 26), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, c)
-    corner(pill, 13)
+    local c, sc = card(page, 38)
+    cardLabel(c, key, -140)
+    local pill = new("Frame", { Size = UDim2.fromOffset(104, 22), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, c)
+    corner(pill, 11)
     local pg = new("UIGradient", {}, pill)
     onAccent(function() pg.Color = accentSeq() end)
     local pscale = new("UIScale", {}, pill)
-    local txt = new("TextLabel", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = options[defIndex], Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = WHITE }, pill)
+    local txt = new("TextLabel", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = options[defIndex], Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = WHITE }, pill)
     local idx = defIndex
     interact(c, sc, function()
         idx = idx % #options + 1
@@ -613,8 +627,51 @@ local function Choice(page, key, options, defIndex, cb)
     end)
 end
 
+-- lista rolavel de botoes
+local function ListCard(page, h)
+    local c = card(page, h)
+    local sc = new("ScrollingFrame", {
+        Size = UDim2.new(1, -14, 1, -14), Position = UDim2.fromOffset(7, 7), BackgroundTransparency = 1,
+        BorderSizePixel = 0, ScrollBarThickness = 3, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+    }, c)
+    new("UIListLayout", { Padding = UDim.new(0, 4) }, sc)
+    onAccent(function() sc.ScrollBarImageColor3 = theme.Accent end)
+    return sc
+end
+
+local function fillList(sc, items, onClick)
+    for _, c in ipairs(sc:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+    for _, it in ipairs(items) do
+        local b = new("TextButton", {
+            Size = UDim2.new(1, -6, 0, 28), BackgroundColor3 = theme.Off, BackgroundTransparency = 0.35, AutoButtonColor = false,
+            Text = "   " .. it.text, TextColor3 = theme.Text, Font = Enum.Font.GothamMedium, TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0,
+        }, sc)
+        corner(b, 7)
+        b.MouseEnter:Connect(function() tw(b, 0.15, { BackgroundColor3 = theme.Accent, BackgroundTransparency = 0.2 }) end)
+        b.MouseLeave:Connect(function() tw(b, 0.15, { BackgroundColor3 = theme.Off, BackgroundTransparency = 0.35 }) end)
+        b.MouseButton1Click:Connect(function() onClick(it) end)
+    end
+end
+
 ------------------------------------------------------------------
--- LOGICA
+-- DETECCAO DE JOGO
+------------------------------------------------------------------
+local PID, GID = game.PlaceId, game.GameId
+local function inList(t) return table.find(t, PID) ~= nil end
+local gameName
+if GID == 994732206 or inList({ 2753915549, 4442272183, 7449423635 }) then
+    gameName = "Blox Fruits"
+elseif GID == 66654135 or PID == 142823291 then
+    gameName = "Murder Mystery 2"
+elseif GID == 7326934954 or inList({ 126509999114328, 79546208627805 }) then
+    gameName = "99 Nights in the Forest"
+elseif inList({ 6516141723, 6839171747 }) then
+    gameName = "Doors"
+end
+
+------------------------------------------------------------------
+-- LOGICA UNIVERSAL
 ------------------------------------------------------------------
 local flyBV, flyBG
 local function stopFly()
@@ -751,7 +808,7 @@ task.spawn(function()
                         local bb = new("BillboardGui", { Adornee = head, Size = UDim2.fromOffset(120, 20), StudsOffset = Vector3.new(0, 2.5, 0), AlwaysOnTop = true }, gui)
                         new("TextLabel", {
                             Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = p.DisplayName,
-                            TextColor3 = WHITE, TextStrokeTransparency = 0, Font = Enum.Font.GothamBold, TextSize = 13,
+                            TextColor3 = WHITE, TextStrokeTransparency = 0, Font = Enum.Font.GothamBold, TextSize = 12,
                         }, bb)
                         o = { hl = hl, bb = bb }
                         espObjs[p] = o
@@ -767,14 +824,228 @@ task.spawn(function()
 end)
 
 ------------------------------------------------------------------
--- DETECCAO DE JOGO
+-- LOGICA POR JOGO
 ------------------------------------------------------------------
-local GAMES = {
-    [2753915549] = "Blox Fruits", [4442272183] = "Blox Fruits", [7449423635] = "Blox Fruits",
-    [142823291] = "Murder Mystery 2",
-    [6516141723] = "Doors", [6839171747] = "Doors",
-}
-local gameName = GAMES[game.PlaceId]
+local function equipWeapon()
+    local h = hum()
+    if not h or not lp.Character then return end
+    local tool = lp.Character:FindFirstChildOfClass("Tool")
+    if tool and tool.ToolTip == S.weapon then return end
+    for _, t in ipairs(lp.Backpack:GetChildren()) do
+        if t:IsA("Tool") and t.ToolTip == S.weapon then h:EquipTool(t) break end
+    end
+end
+
+local function nearestMob(container, maxD)
+    local r = root()
+    if not r or not container then return end
+    local best, bd = nil, maxD
+    for _, m in ipairs(container:GetChildren()) do
+        if m:IsA("Model") and not Players:GetPlayerFromCharacter(m) then
+            local mh = m:FindFirstChildOfClass("Humanoid")
+            local mr = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
+            if mh and mr and mh.Health > 0 then
+                local d = (mr.Position - r.Position).Magnitude
+                if d <= bd then best, bd = mr, d end
+            end
+        end
+    end
+    return best
+end
+
+-- Kill Aura (somente mobs/NPCs)
+task.spawn(function()
+    while gui.Parent do
+        task.wait(0.15)
+        if S.aura then
+            pcall(function()
+                local container
+                if gameName == "Blox Fruits" then container = workspace:FindFirstChild("Enemies")
+                elseif gameName == "99 Nights in the Forest" then container = workspace:FindFirstChild("Characters") end
+                local target = nearestMob(container, S.auraRange)
+                local r, h = root(), hum()
+                if not target or not r or not h or h.Health <= 0 then return end
+                r.CFrame = CFrame.lookAt(r.Position, Vector3.new(target.Position.X, r.Position.Y, target.Position.Z))
+                if gameName == "Blox Fruits" then equipWeapon() end
+                local tool = lp.Character:FindFirstChildOfClass("Tool")
+                if tool then pcall(function() tool:Activate() end) end
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton1(Vector2.new(900, 500))
+            end)
+        end
+    end
+end)
+
+if gameName == "Blox Fruits" then
+    -- Auto Farm
+    task.spawn(function()
+        while gui.Parent do
+            task.wait(0.1)
+            if S.farm then
+                pcall(function()
+                    local r, h = root(), hum()
+                    if not r or not h or h.Health <= 0 then return end
+                    local enemies = workspace:FindFirstChild("Enemies")
+                    local best = nearestMob(enemies, 1e9)
+                    if not best then return end
+                    equipWeapon()
+                    r.CFrame = best.CFrame * CFrame.new(0, S.farmH, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+                    r.AssemblyLinearVelocity = Vector3.zero
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton1(Vector2.new(900, 500))
+                end)
+            end
+        end
+    end)
+    -- Auto Stats
+    task.spawn(function()
+        while gui.Parent do
+            task.wait(1)
+            if S.autoStats then
+                pcall(function()
+                    local pts = lp.Data.Points.Value
+                    if pts > 0 then
+                        RepStorage.Remotes.CommF_:InvokeServer("AddPoint", S.stat, math.min(pts, 3))
+                    end
+                end)
+            end
+        end
+    end)
+    -- Frutas
+    local function fruitList()
+        local t = {}
+        for _, o in ipairs(workspace:GetChildren()) do
+            if o:IsA("Tool") and o:FindFirstChild("Handle") and string.find(o.Name, "Fruit") then t[#t + 1] = o end
+        end
+        return t
+    end
+    task.spawn(function()
+        while gui.Parent do
+            task.wait(1)
+            pcall(function()
+                local fruits = fruitList()
+                for _, f in ipairs(fruits) do
+                    if S.fruitEsp then
+                        if not f:FindFirstChild("KamuHL") then
+                            new("Highlight", { Name = "KamuHL", FillColor = theme.Gold, FillTransparency = 0.4 }, f)
+                            local bb = new("BillboardGui", { Name = "KamuBB", Adornee = f.Handle, Size = UDim2.fromOffset(110, 18), AlwaysOnTop = true, StudsOffset = Vector3.new(0, 2, 0) }, f)
+                            new("TextLabel", {
+                                Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = f.Name, TextColor3 = theme.Gold,
+                                TextStrokeTransparency = 0, Font = Enum.Font.GothamBold, TextSize = 12,
+                            }, bb)
+                        end
+                    else
+                        local h, b = f:FindFirstChild("KamuHL"), f:FindFirstChild("KamuBB")
+                        if h then h:Destroy() end
+                        if b then b:Destroy() end
+                    end
+                end
+                if S.autoFruit and fruits[1] then
+                    local r = root()
+                    if r then r.CFrame = fruits[1].Handle.CFrame end
+                end
+            end)
+        end
+    end)
+
+elseif gameName == "Murder Mystery 2" then
+    -- Auto Farm de moedas
+    task.spawn(function()
+        while gui.Parent do
+            task.wait(0.2)
+            if S.coinFarm then
+                pcall(function()
+                    local r = root()
+                    if not r then return end
+                    local best, bd
+                    for _, m in ipairs(workspace:GetChildren()) do
+                        local cc = m:FindFirstChild("CoinContainer")
+                        if cc then
+                            for _, coin in ipairs(cc:GetChildren()) do
+                                if coin:IsA("BasePart") then
+                                    local d = (coin.Position - r.Position).Magnitude
+                                    if not bd or d < bd then best, bd = coin, d end
+                                end
+                            end
+                        end
+                    end
+                    if best then
+                        local tn = TS:Create(r, TweenInfo.new(math.max(bd / 28, 0.1), Enum.EasingStyle.Linear), { CFrame = CFrame.new(best.Position + Vector3.new(0, 2, 0)) })
+                        tn:Play()
+                        tn.Completed:Wait()
+                    end
+                end)
+            end
+        end
+    end)
+
+elseif gameName == "99 Nights in the Forest" then
+    task.spawn(function()
+        while gui.Parent do
+            task.wait(1.5)
+            pcall(function()
+                local items = workspace:FindFirstChild("Items")
+                local chars = workspace:FindFirstChild("Characters")
+                if S.itemEsp then
+                    if items then
+                        for _, o in ipairs(items:GetChildren()) do
+                            if not o:FindFirstChild("KamuHL") then
+                                new("Highlight", { Name = "KamuHL", FillColor = theme.Accent, FillTransparency = 0.5 }, o)
+                            end
+                        end
+                    end
+                    if chars then
+                        for _, o in ipairs(chars:GetChildren()) do
+                            if not Players:GetPlayerFromCharacter(o) and not o:FindFirstChild("KamuHL") then
+                                new("Highlight", { Name = "KamuHL", FillColor = Color3.fromRGB(255, 60, 60), FillTransparency = 0.5 }, o)
+                            end
+                        end
+                    end
+                else
+                    for _, folder in ipairs({ items, chars }) do
+                        if folder then
+                            for _, o in ipairs(folder:GetChildren()) do
+                                local h = o:FindFirstChild("KamuHL")
+                                if h then h:Destroy() end
+                            end
+                        end
+                    end
+                end
+                if S.bring and items then
+                    local r = root()
+                    if r then
+                        for _, o in ipairs(items:GetChildren()) do
+                            local p = o:IsA("Model") and (o.PrimaryPart or o:FindFirstChildWhichIsA("BasePart")) or (o:IsA("BasePart") and o)
+                            if p and (p.Position - r.Position).Magnitude < 200 then
+                                o:PivotTo(r.CFrame * CFrame.new(0, 0, -5))
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+
+elseif gameName == "Doors" then
+    task.spawn(function()
+        while gui.Parent do
+            task.wait(1)
+            local rooms = workspace:FindFirstChild("CurrentRooms")
+            if rooms then
+                for _, d in ipairs(rooms:GetDescendants()) do
+                    if d:IsA("ProximityPrompt") and d.Parent then
+                        local existing = d.Parent:FindFirstChild("KamuHL")
+                        if S.doorsHl and not existing then
+                            new("Highlight", { Name = "KamuHL", FillColor = theme.Accent, FillTransparency = 0.6 }, d.Parent)
+                        elseif not S.doorsHl and existing then
+                            existing:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
 
 ------------------------------------------------------------------
 -- PAGINAS
@@ -807,39 +1078,33 @@ if gameName == "Blox Fruits" then
     Toggle(pMain, "farm", false, function(v) S.farm = v end)
     Choice(pMain, "weapon", { "Melee", "Sword", "Blox Fruit", "Gun" }, 1, function(_, name) S.weapon = name end)
     Slider(pMain, "farmh", 3, 25, S.farmH, function(v) S.farmH = v end)
-
-    task.spawn(function()
-        while gui.Parent do
-            task.wait(0.1)
-            if S.farm then
-                pcall(function()
-                    local r, h = root(), hum()
-                    if not r or not h or h.Health <= 0 then return end
-                    local enemies = workspace:FindFirstChild("Enemies")
-                    if not enemies then return end
-                    local best, bd
-                    for _, m in ipairs(enemies:GetChildren()) do
-                        local mh, mr = m:FindFirstChildOfClass("Humanoid"), m:FindFirstChild("HumanoidRootPart")
-                        if mh and mr and mh.Health > 0 then
-                            local d = (mr.Position - r.Position).Magnitude
-                            if not bd or d < bd then best, bd = m, d end
-                        end
-                    end
-                    if not best then return end
-                    local tool = lp.Character:FindFirstChildOfClass("Tool")
-                    if not tool or tool.ToolTip ~= S.weapon then
-                        for _, t in ipairs(lp.Backpack:GetChildren()) do
-                            if t:IsA("Tool") and t.ToolTip == S.weapon then h:EquipTool(t) break end
-                        end
-                    end
-                    r.CFrame = best.HumanoidRootPart.CFrame * CFrame.new(0, S.farmH, 0) * CFrame.Angles(math.rad(-90), 0, 0)
-                    r.AssemblyLinearVelocity = Vector3.zero
-                    VirtualUser:CaptureController()
-                    VirtualUser:ClickButton1(Vector2.new(900, 500))
-                end)
+    Toggle(pMain, "aura", false, function(v) S.aura = v end)
+    Slider(pMain, "aurarange", 10, 60, S.auraRange, function(v) S.auraRange = v end)
+    Toggle(pMain, "autostats", false, function(v) S.autoStats = v end)
+    Choice(pMain, "stat", { "Melee", "Defense", "Sword", "Gun", "Demon Fruit" }, 1, function(_, name) S.stat = name end)
+    Toggle(pMain, "autofruit", false, function(v) S.autoFruit = v end)
+elseif gameName == "Murder Mystery 2" then
+    Section(pMain, "sec_mm2")
+    Toggle(pMain, "coinfarm", false, function(v) S.coinFarm = v end)
+    Button(pMain, "grabgun", function()
+        pcall(function()
+            local gun = workspace:FindFirstChild("GunDrop", true)
+            local r = root()
+            if gun and r then
+                local old = r.CFrame
+                r.CFrame = gun.CFrame
+                task.wait(0.25)
+                r.CFrame = old
+            else
+                notify(tr("notfound"))
             end
-        end
+        end)
     end)
+elseif gameName == "99 Nights in the Forest" then
+    Section(pMain, "sec_99")
+    Toggle(pMain, "aura", false, function(v) S.aura = v end)
+    Slider(pMain, "aurarange", 10, 60, S.auraRange, function(v) S.auraRange = v end)
+    Toggle(pMain, "bring", false, function(v) S.bring = v end)
 end
 
 -- PLAYER
@@ -859,39 +1124,49 @@ Slider(pPlayer, "jumpval", 50, 300, S.jump, function(v) S.jump = v end)
 -- TELEPORT
 local pTp = addTab("tab_tp")
 Section(pTp, "sec_players")
-local listCard = card(pTp, 180)
-local listScroll = new("ScrollingFrame", {
-    Size = UDim2.new(1, -16, 1, -16), Position = UDim2.fromOffset(8, 8), BackgroundTransparency = 1,
-    BorderSizePixel = 0, ScrollBarThickness = 3, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
-}, listCard)
-new("UIListLayout", { Padding = UDim.new(0, 5) }, listScroll)
-onAccent(function() listScroll.ScrollBarImageColor3 = theme.Accent end)
+local playerList = ListCard(pTp, 150)
 local function refreshPlayers()
-    for _, c in ipairs(listScroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+    local items = {}
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= lp then
-            local b = new("TextButton", {
-                Size = UDim2.new(1, -6, 0, 32), BackgroundColor3 = theme.Off, BackgroundTransparency = 0.35, AutoButtonColor = false,
-                Text = "   " .. p.DisplayName .. "  @" .. p.Name, TextColor3 = theme.Text, Font = Enum.Font.GothamMedium, TextSize = 12,
-                TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0,
-            }, listScroll)
-            corner(b, 8)
-            b.MouseEnter:Connect(function() tw(b, 0.15, { BackgroundColor3 = theme.Accent, BackgroundTransparency = 0.2 }) end)
-            b.MouseLeave:Connect(function() tw(b, 0.15, { BackgroundColor3 = theme.Off, BackgroundTransparency = 0.35 }) end)
-            b.MouseButton1Click:Connect(function()
-                local r, tr_ = root(), p.Character and p.Character:FindFirstChild("HumanoidRootPart")
-                if r and tr_ then
-                    r.CFrame = tr_.CFrame * CFrame.new(0, 0, 3)
-                    notify(tr("tpdone") .. p.DisplayName)
-                end
-            end)
-        end
+        if p ~= lp then items[#items + 1] = { text = p.DisplayName .. "  @" .. p.Name, player = p } end
     end
+    fillList(playerList, items, function(it)
+        local r = root()
+        local tr_ = it.player.Character and it.player.Character:FindFirstChild("HumanoidRootPart")
+        if r and tr_ then
+            r.CFrame = tr_.CFrame * CFrame.new(0, 0, 3)
+            notify(tr("tpdone") .. it.player.DisplayName)
+        end
+    end)
 end
 refreshPlayers()
 bind(Players.PlayerAdded, refreshPlayers)
 bind(Players.PlayerRemoving, function() task.defer(refreshPlayers) end)
 Button(pTp, "refresh", refreshPlayers)
+
+if gameName == "Blox Fruits" then
+    Section(pTp, "sec_islands")
+    local islandList = ListCard(pTp, 150)
+    local function refreshIslands()
+        local items = {}
+        pcall(function()
+            for _, p in ipairs(workspace._WorldOrigin.Locations:GetChildren()) do
+                if p:IsA("BasePart") then items[#items + 1] = { text = p.Name, part = p } end
+            end
+        end)
+        table.sort(items, function(a, b) return a.text < b.text end)
+        fillList(islandList, items, function(it)
+            local r = root()
+            if r then
+                r.CFrame = it.part.CFrame * CFrame.new(0, 30, 0)
+                notify(tr("tpdone") .. it.text)
+            end
+        end)
+    end
+    refreshIslands()
+    Button(pTp, "refresh", refreshIslands)
+end
+
 Section(pTp, "sec_tools")
 Toggle(pTp, "clicktp", false, function(v) S.clickTp = v end, true)
 Button(pTp, "serverhop", function()
@@ -907,6 +1182,16 @@ Button(pTp, "serverhop", function()
     end)
 end, true)
 Button(pTp, "rejoin", function() TeleportService:Teleport(game.PlaceId, lp) end)
+if gameName == "99 Nights in the Forest" then
+    Button(pTp, "campfire", function()
+        pcall(function()
+            local fire = workspace:FindFirstChild("MainFire", true) or workspace:FindFirstChild("Campfire", true)
+            local r = root()
+            local p = fire and (fire:IsA("BasePart") and fire or fire:FindFirstChildWhichIsA("BasePart", true))
+            if p and r then r.CFrame = p.CFrame * CFrame.new(0, 6, 0) else notify(tr("notfound")) end
+        end)
+    end)
+end
 
 -- VISUAL
 local pVis = addTab("tab_visual")
@@ -921,54 +1206,37 @@ Button(pVis, "fps", function()
         elseif d:IsA("ParticleEmitter") or d:IsA("Trail") or d:IsA("Smoke") or d:IsA("Fire") then d.Enabled = false end
     end
 end)
-if gameName == "Murder Mystery 2" then
-    Info(pVis, function() return tr("mm2info") end, 48)
+if gameName == "Blox Fruits" then
+    Toggle(pVis, "fruitesp", false, function(v) S.fruitEsp = v end)
+elseif gameName == "99 Nights in the Forest" then
+    Toggle(pVis, "itemesp", false, function(v) S.itemEsp = v end)
 elseif gameName == "Doors" then
     Section(pVis, "sec_doors")
     Toggle(pVis, "doorshl", false, function(v) S.doorsHl = v end)
-    task.spawn(function()
-        while gui.Parent do
-            task.wait(1)
-            local rooms = workspace:FindFirstChild("CurrentRooms")
-            if rooms then
-                for _, d in ipairs(rooms:GetDescendants()) do
-                    if d:IsA("ProximityPrompt") and d.Parent then
-                        local existing = d.Parent:FindFirstChild("KamuHL")
-                        if S.doorsHl and not existing then
-                            new("Highlight", { Name = "KamuHL", FillColor = theme.Accent, FillTransparency = 0.6 }, d.Parent)
-                        elseif not S.doorsHl and existing then
-                            existing:Destroy()
-                        end
-                    end
-                end
-            end
-        end
-    end)
 end
 
 -- CONFIG
 local pCfg = addTab("tab_config")
 Section(pCfg, "sec_look")
 do
-    local c = card(pCfg, 82)
-    cardLabel(c, "accent", -20, 38)
+    local c = card(pCfg, 70)
+    cardLabel(c, "accent", -20, 32)
     local presets = {
         Color3.fromRGB(150, 90, 255), Color3.fromRGB(255, 70, 110), Color3.fromRGB(60, 160, 255),
         Color3.fromRGB(50, 210, 140), Color3.fromRGB(255, 170, 40), Color3.fromRGB(240, 240, 245),
     }
-    local rings, scales = {}, {}
+    local rings = {}
     local function select_(i)
         for k, r in ipairs(rings) do tw(r, 0.2, { Thickness = k == i and 2.5 or 0 }) end
     end
     for i, col in ipairs(presets) do
         local b = new("TextButton", {
-            Size = UDim2.fromOffset(28, 28), Position = UDim2.fromOffset(16 + (i - 1) * 38, 42),
+            Size = UDim2.fromOffset(24, 24), Position = UDim2.fromOffset(14 + (i - 1) * 34, 36),
             BackgroundColor3 = col, Text = "", BorderSizePixel = 0, AutoButtonColor = false,
         }, c)
-        corner(b, 14)
+        corner(b, 12)
         local sc = new("UIScale", {}, b)
         rings[i] = new("UIStroke", { Color = WHITE, Thickness = i == 1 and 2.5 or 0 }, b)
-        scales[i] = sc
         b.MouseEnter:Connect(function() tw(sc, 0.15, { Scale = 1.15 }, Enum.EasingStyle.Back) end)
         b.MouseLeave:Connect(function() tw(sc, 0.15, { Scale = 1 }) end)
         b.MouseButton1Click:Connect(function()
@@ -1000,16 +1268,16 @@ Button(pCfg, "destroy", function() if getgenv and getgenv().KamuHubDestroy then 
 -- PILULA + ABRIR/FECHAR ANIMADO
 ------------------------------------------------------------------
 local pill = new("Frame", {
-    Size = UDim2.fromOffset(230, 46), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -70),
+    Size = UDim2.fromOffset(210, 40), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -70),
     BackgroundColor3 = Color3.fromRGB(18, 18, 28), BorderSizePixel = 0, Visible = false,
 }, gui)
-corner(pill, 23)
-local pillStroke = new("UIStroke", { Thickness = 1.8 }, pill)
+corner(pill, 20)
+local pillStroke = new("UIStroke", { Thickness = 1.6 }, pill)
 local pillGrad = new("UIGradient", { Rotation = 30 }, pillStroke)
 onAccent(function() pillGrad.Color = accentSeq() end)
 local pillScale = new("UIScale", {}, pill)
-makeLogo(pill, 34, UDim2.fromOffset(6, 6))
-makeTitle(pill, UDim2.fromOffset(50, 0), UDim2.new(1, -56, 1, 0), 16)
+makeLogo(pill, 30, UDim2.fromOffset(5, 5))
+makeTitle(pill, UDim2.fromOffset(44, 0), UDim2.new(1, -50, 1, 0), 14)
 local pillBtn = new("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", ZIndex = 10 }, pill)
 pillBtn.MouseEnter:Connect(function() tw(pillScale, 0.2, { Scale = 1.06 }, Enum.EasingStyle.Back) end)
 pillBtn.MouseLeave:Connect(function() tw(pillScale, 0.2, { Scale = 1 }) end)
